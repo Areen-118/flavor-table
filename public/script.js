@@ -38,7 +38,7 @@ async function searchRecipes() {
   if (!ingredients) return alert("Please enter ingredients!");
 
   try {
-    const response = await fetch(`http://localhost:3000/api/recipes/search?ingredients=${(ingredients)}`);
+    const response = await fetch(`http://localhost:3000/recipes/search?ingredients=${(ingredients)}`);
     if (!response.ok) throw new Error("Failed to fetch recipes");
 
     const recipes = await response.json();
@@ -81,7 +81,7 @@ let currentRecipe = null;
 
 async function fetchRandomRecipe() {
   try {
-    const response = await fetch('http://localhost:3000/api/recipes/random');
+    const response = await fetch('http://localhost:3000/recipes/random');
     if (!response.ok) throw new Error("API request failed");
 
     const recipe = await response.json();
