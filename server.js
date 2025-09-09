@@ -1,57 +1,48 @@
-// require("dotenv").config();
-// const express = require("express");
-// const path = require("path");
-// const cors = require("cors");
-
-// const app = express();
-
-// // ====================
-// // Middlewares
-// // ====================
-// app.use(cors());
-// app.use(express.json());
-// app.use(express.static(path.join(__dirname, "public")));
-
-// // ====================
-// // Routes
-// // ====================
-// const recipeRoutes = require("./routes/recipes");
-// app.use("/api/recipes", recipeRoutes);
-
-
-// const homeRoute = require("./routes/home");
-// app.use("/", homeRoute);
-
-// // ====================
-// // Export for server.js
-// // ====================
-// module.exports = app;
 require("dotenv").config();
-const { Pool } = require("pg");
-const app = require("./app");
+const express = require("express");
+const path = require("path");
+const axios = require("axios");
+const cors = require("cors");
 
-const PORT = process.env.PORT || 3000;
+const app = express();
 
-// PostgreSQL pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
+// Middlewares
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+// Routes
+const recipeRoutes = require("./routes/recipes");
+const homeRoute = require("./routes/home");
+
+app.use("/recipes", recipeRoutes);
+app.use("/", homeRoute);
+
+// Random Recipe API
+app.get("/recipes/random", async (req, res) => {
+  try {
+    const response = await axios.get("https://api.spoonacular.com/recipes/random", {
+      params: {
+        number: 1,
+        apiKey: process.env.SPOONACULAR_API_KEY,
+      },
+    });
+
+    const recipe = response.data.recipes[0];
+    console.log("API response:", recipe); // ✅ صارت داخل البلوك
+
+    const simplified = {
+      title: recipe.title,
+      image: recipe.image,
+      instructions: recipe.instructions,
+      ingredients: recipe.extendedIngredients.map((ing) => ing.original),
+    };
+
+    res.json(simplified);
+  } catch (error) {
+    console.error("Error fetching random recipe:", error.message);
+    res.status(500).json({ error: "Failed to fetch random recipe" });
+  }
 });
 
-// Test DB connection, then start server
-pool.connect()
-  .then(client => {
-    console.log("✅ Connected to PostgreSQL database");
-    client.release();
-
-    // Make pool available globally via app.locals if needed
-    app.locals.pool = pool;
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error("❌ Failed to connect to PostgreSQL:", err.message);
-    process.exit(1);
-  });
+module.exports = app;
