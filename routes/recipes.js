@@ -5,11 +5,8 @@ const pool = require('./db');
 const router = express.Router();
 const apiKey = process.env.SPOONACULAR_API_KEY;
 
-
-
-// ==========================
 // GET /recipes/random (Spoonacular API)
-// ==========================
+
 router.get("/random", async (req, res) => {
   try {
     const response = await axios.get("https://api.spoonacular.com/recipes/random", {
@@ -34,9 +31,7 @@ router.get("/random", async (req, res) => {
   }
 });
 
-// ==========================
 // GET /recipes/search?ingredients=tomato,cheese (Spoonacular API)
-// ==========================
 router.get("/search", async (req, res) => {
   const { ingredients } = req.query;
 
@@ -76,28 +71,41 @@ router.get("/search", async (req, res) => {
   }
 });
 
-// ==========================
-// CRUD for PostgreSQL
-// ==========================
 
-// Create recipe
+// CRUD for PostgreSQL
+
+// Add a recipe to favorites
 router.post("/add", async (req, res) => {
-  const { title, image, instructions } = req.body;
+  const { title, image, ingredients, readyin, instructions } = req.body;
+
+  // Basic validation
+  if (!title || !image || !ingredients  || !instructions) {
+    return res.status(400).json({ error: "Missing required fields." });
+  }
+
+  console.log("Adding recipe:", { title, image, ingredients, readyin, instructions });
 
   try {
     const result = await pool.query(
-      "INSERT INTO recipes (title, image, instructions) VALUES ($1, $2, $3) RETURNING *",
-      [title, image, instructions]
+      `INSERT INTO recipes (title, image, ingredients, readyin , instructions)
+       VALUES ($1, $2, $3::jsonb, $4, $5) RETURNING *`,
+      [
+        title,
+        image,
+        JSON.stringify(ingredients), // convert to JSON for Postgres
+        readyin,
+        instructions,
+      ]
     );
+
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("❌ Error inserting recipe:", error.message);
     res.status(500).json({ error: "Failed to insert recipe" });
   }
 });
-
-// Read all recipes
-router.get("/all", async (req, res) => {
+//Get all favorites from DB
+router.get("/favorites", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM recipes ORDER BY id ASC");
     res.json(result.rows);
@@ -106,6 +114,64 @@ router.get("/all", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch recipes" });
   }
 });
+
+// Remove favorite by ID
+router.delete("/favorites/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      "DELETE FROM recipes WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Favorite not found" });
+    }
+
+    res.json({ message: "Favorite removed", removed: result.rows[0] });
+  } catch (err) {
+    console.error("❌ Error deleting favorite:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Update favorite by ID
+router.put("/favorites/:id", async (req, res) => {
+  const { id } = req.params;
+  const { title, image, instructions } = req.body;
+
+  console.log("➡️ Update request:", { id, title, image, instructions });
+
+  try {
+    const result = await pool.query(
+      `UPDATE recipes 
+       SET title = $1, image = $2, instructions = $3
+       WHERE id = $4
+       RETURNING *`,
+      [title, image, instructions, id]
+    );
+
+    if (result.rowCount === 0) {
+      console.warn("⚠️ No recipe found with id:", id);
+      return res.status(404).json({ error: "Favorite not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("❌ Error updating recipe:", error.message);
+    res.status(500).json({ error: "Failed to update recipe" });
+  }
+});
+
+
+
+
+
+
+
+
+
+
 
 // Read single recipe
 router.get("/:id", async (req, res) => {
@@ -179,7 +245,6 @@ router.get('/favorites', async (req, res) => {
   }
 });
 
-// Add a recipe to favorites
 router.post('/favorites', async (req, res) => {
   const { title, image, instructions } = req.body;
   try {
