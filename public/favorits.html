@@ -10,7 +10,20 @@
   <div class="container">
     <h1>❤️ Favorite Recipes</h1>
     <ul id="favoritesList"></ul>
-    <button type="button" onclick="clearFavorites()">Clear All</button>
+    
+<div id="updateFormContainer" style="display:none;">
+  <h3>Update Recipe</h3>
+  <form id="updateForm" onsubmit="submitUpdate(event)">
+    <input type="hidden" id="updateId" />
+    <label>Title:</label>
+    <input type="text" id="updateTitle" required /><br/>
+    <label>Image URL:</label>
+    <input type="text" id="updateImage" /><br/>
+    <label>Instructions:</label>
+    <textarea id="updateInstructions"></textarea><br/>
+    <button type="submit">Save Changes</button>
+  </form>
+</div>
 
     <nav>
       <a href="index.html">Home</a>

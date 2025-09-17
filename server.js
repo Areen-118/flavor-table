@@ -1,31 +1,4 @@
-// require("dotenv").config();
-// const express = require("express");
-// const path = require("path");
-// const cors = require("cors");
 
-// const app = express();
-
-// // ====================
-// // Middlewares
-// // ====================
-// app.use(cors());
-// app.use(express.json());
-// app.use(express.static(path.join(__dirname, "public")));
-
-// // ====================
-// // Routes
-// // ====================
-// const recipeRoutes = require("./routes/recipes");
-// app.use("/api/recipes", recipeRoutes);
-
-
-// const homeRoute = require("./routes/home");
-// app.use("/", homeRoute);
-
-// // ====================
-// // Export for server.js
-// // ====================
-// module.exports = app;
 require("dotenv").config();
 const { Pool } = require("pg");
 const app = require("./app");
@@ -39,19 +12,27 @@ const pool = new Pool({
 });
 
 // Test DB connection, then start server
-pool.connect()
-  .then(client => {
-    console.log("✅ Connected to PostgreSQL database");
-    client.release();
+pool
+  .connect()
+  .then((client) => {
+    return client
+      .query("SELECT current_database(), current_user")
+      .then((res) => {
+        client.release();
 
-    // Make pool available globally via app.locals if needed
-    app.locals.pool = pool;
+        const dbName = res.rows[0].current_database;
+        const dbUser = res.rows[0].current_user;
 
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running at http://localhost:${PORT}`);
-    });
+        console.log(
+          `Connected to PostgreSQL as user '${dbUser}' on database '${dbName}'`
+        );
+
+        console.log(`App listening on port http://localhost:${PORT}`);
+      });
   })
-  .catch(err => {
-    console.error("❌ Failed to connect to PostgreSQL:", err.message);
-    process.exit(1);
+  .then(() => {
+    app.listen(PORT);
+  })
+  .catch((err) => {
+    console.error("Could not connect to database:", err);
   });
